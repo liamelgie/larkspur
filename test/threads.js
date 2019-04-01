@@ -19,4 +19,14 @@ describe('Threads', function() {
       expect(thread).to.not.be.null
     })
   })
+  describe('image retrieval', function() {
+    before(async function() {
+      const threads = await chan.get.all.threads.from('b')
+      this.testThread = threads[0].threads[4].no
+    })
+    it('should retrieve all images from a specific thread' , async function() {
+      const images = await chan.get.thread(this.testThread).images.from('b')
+      expect(images).to.not.be.null
+    })
+  })
 })

@@ -20,6 +20,9 @@ const larkspur = {
     },
     thread: (thread) => {
       return {
+        images: {
+          from: (board) => _getThreadImages(board, thread)
+        },
         from: (board) => _getThread(board, thread)
       }
     }
@@ -71,6 +74,21 @@ const _getThread = async (board, thread) => {
     const response = await axios.get(`http://a.4cdn.org/${board}/thread/${thread}.json`)
     .then(data => data.data)
     return response
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const _getThreadImages = async (board, thread) => {
+  try {
+    const response = await _getThread(board, thread)
+    const images = []
+    for (let post of response.posts) {
+      if (post.filename) {
+        images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+      }
+    }
+    return images
   } catch (error) {
     console.error(error)
   }
