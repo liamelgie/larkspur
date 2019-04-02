@@ -3,27 +3,46 @@ const axios = require('axios')
 const larkspur = {
   get: {
     catalogue: {
-      from: (board) => _getCatalogue(board)
+      on: (board) => _getCatalogue(board)
     },
     archive: {
-      from: (board) => _getArchive(board)
+      on: (board) => _getArchive(board)
     },
     page: (page) => {
       return {
-        from: (board) => _getPage(board, page)
+        on: (board) => _getPage(board, page)
       }
     },
     all: {
       threads: {
-        from: (board) => _getThreads(board)
+        on: (board) => _getThreads(board)
+      }
+    },
+    filtered: (filter) => {
+      return {
+        images: {
+          from: {
+            thread: (thread) => {
+              return {
+                on: (board) => _getThreadImages(board, thread, filter)
+              }
+            }
+          }
+        }
+      }
+    },
+    images: {
+      from: {
+        thread: (thread) => {
+          return {
+            on: (board) => _getThreadImages(board, thread)
+          }
+        }
       }
     },
     thread: (thread) => {
       return {
-        images: {
-          from: (board) => _getThreadImages(board, thread)
-        },
-        from: (board) => _getThread(board, thread)
+        on: (board) => _getThread(board, thread)
       }
     }
   }
@@ -79,13 +98,17 @@ const _getThread = async (board, thread) => {
   }
 }
 
-const _getThreadImages = async (board, thread) => {
+const _getThreadImages = async (board, thread, filter) => {
   try {
     const response = await _getThread(board, thread)
     const images = []
     for (let post of response.posts) {
       if (post.filename) {
-        images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+        if (filter) {
+          if (post.ext === `.${filter}`) images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+        } else {
+          images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+        }
       }
     }
     return images
