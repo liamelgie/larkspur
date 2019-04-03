@@ -101,13 +101,20 @@ const _getThread = async (board, thread) => {
 const _getThreadImages = async (board, thread, filter) => {
   try {
     const response = await _getThread(board, thread)
-    const images = []
+    const images = {
+      posts: [],
+      urls: []
+    }
     for (let post of response.posts) {
       if (post.filename) {
         if (filter) {
-          if (post.ext === `.${filter}`) images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+          if (post.ext === `.${filter}`) {
+            images.urls.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+            images.posts.push(post)
+          }
         } else {
-          images.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+          images.urls.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
+          images.posts.push(post)
         }
       }
     }
