@@ -44,6 +44,19 @@ const larkspur = {
       return {
         on: (board) => _getThread(board, thread)
       }
+    },
+    replies: {
+      to: (post) => {
+        return {
+          from: {
+            thread: (thread) => {
+              return {
+                on: (board) => _getReplies(board, thread, post)
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -119,6 +132,21 @@ const _getThreadImages = async (board, thread, filter) => {
       }
     }
     return images
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const _getReplies = async (boardName, threadNo, postNo) => {
+  try {
+    const thread = await _getThread(boardName, threadNo)
+    const replies = []
+    for (let reply of thread.posts) {
+      if (reply.resto === postNo) {
+        replies.push(reply)
+      }
+    }
+    return replies
   } catch (error) {
     console.error(error)
   }

@@ -33,4 +33,15 @@ describe('Threads', function() {
       expect(images).to.not.be.null
     })
   })
+  describe('reply retrieval', function() {
+    before(async function() {
+      const threads = await chan.get.all.threads.on('b')
+      this.testThread = threads[0].threads[4]
+      this.testPosts = await chan.get.thread(this.testThread.no).on('b')
+    })
+    it('should retrieve all replies to a specific post' , async function() {
+      const replies = await chan.get.replies.to(this.testPosts.posts[0].no).from.thread(this.testThread.no).on('b')
+      expect(replies).to.not.be.null
+    })
+  })
 })
