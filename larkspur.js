@@ -58,7 +58,15 @@ const larkspur = {
         }
       }
     }
-  }
+  },
+  getCatalogue: (board) => _getCatalogue(board),
+  getArchive: (board) => _getArchive(board),
+  getPageFromBoard: (board, page) => _getPage(board, page),
+  getThreadsFromBoard: (board) => _getThreads(board),
+  getThreadsFromBoard: (board, thread) => _getThread(board, thread),
+  getImagesFromThread: _getThreadImages(board, thread),
+  getFilteredImagesFromThread: _getThreadImages(board, thread, filter),
+  getRepliesToPost: _getReplies(board, thread, post)
 }
 
 const _getCatalogue = async (board) => {
