@@ -1,162 +1,193 @@
 const axios = require('axios')
 
 const larkspur = {
-  get: {
-    catalogue: {
-      on: (board) => _getCatalogue(board)
-    },
-    archive: {
-      on: (board) => _getArchive(board)
-    },
-    page: (page) => {
-      return {
-        on: (board) => _getPage(board, page)
-      }
-    },
-    all: {
-      threads: {
-        on: (board) => _getThreads(board)
-      }
-    },
-    filtered: (filter) => {
-      return {
-        images: {
-          from: {
-            thread: (thread) => {
-              return {
-                on: (board) => _getThreadImages(board, thread, filter)
-              }
-            }
-          }
-        }
-      }
-    },
-    images: {
-      from: {
-        thread: (thread) => {
-          return {
-            on: (board) => _getThreadImages(board, thread)
-          }
-        }
-      }
-    },
-    thread: (thread) => {
-      return {
-        on: (board) => _getThread(board, thread)
-      }
-    },
-    replies: {
-      to: (post) => {
-        return {
-          from: {
-            thread: (thread) => {
-              return {
-                on: (board) => _getReplies(board, thread, post)
-              }
-            }
-          }
-        }
-      }
-    }
+  catalog: (boardName) => {
+    const cata = new Catalog(boardName)
   },
-  getCatalogue: (board) => _getCatalogue(board),
-  getArchive: (board) => _getArchive(board),
-  getPageFromBoard: (board, page) => _getPage(board, page),
-  getThreadsFromBoard: (board) => _getThreads(board),
-  getThreadsFromBoard: (board, thread) => _getThread(board, thread),
-  getImagesFromThread: _getThreadImages(board, thread),
-  getFilteredImagesFromThread: _getThreadImages(board, thread, filter),
-  getRepliesToPost: _getReplies(board, thread, post)
+  thread: (boardName, threadNumber) => {
+    const thread = new Thread(boardName, threadNumber)
+  }
 }
 
-const _getCatalogue = async (board) => {
-    try {
-      const response = await axios.get(`http://a.4cdn.org/${board}/catalog.json`)
-      .then(data => data.data)
-      return response
-    } catch (error) {
-      console.error(error)
-    }
+class Board {
+  constructor(boardName) {
+    this.boardName = boardName
+    this.catalog = this_getCatalog(boardName)
+  }
+
+  _getCatalog(boardName) {
+    return new Catalog(boardName)
+  }
 }
 
-const _getArchive = async (board) => {
-  try {
-    const response = await axios.get(`http://a.4cdn.org/${board}/archive.json`)
+class Catalog {
+  constructor(boardName) {
+    this._data = this._sendAPIRequest(boardName)
+      .then((data) => this._parseAPIResponse(boardName, data))
+  }
+
+  async _sendAPIRequest(boardName) {
+    const response = await axios.get(`http://a.4cdn.org/${boardName}/catalog.json`)
     .then(data => data.data)
     return response
-  } catch (error) {
-    console.error(error)
+  }
+
+  _parseAPIResponse(boardName, APIResponse) {
+    const pages = this._parsePages(boardName, APIResponse)
+  }
+
+  _parsePages(boardName, pagesData) {
+    const p = {}
+    for (let pageData of pagesData) {
+      p[pageData.page] = new CatalogPage(boardName, pageData)
+    }
+    return p
   }
 }
 
-const _getPage = async (board, page) => {
-  try {
-    const response = await axios.get(`http://a.4cdn.org/${board}/${page}.json`)
+class CatalogPage {
+  constructor(boardName, pageData) {
+    this.pageNumber = pageData.page
+    this.threads = this._parseThreadPreviews(boardName, pageData.threads)
+  }
+
+  _parseThreadPreviews(boardName, threadsData) {
+    const t = {}
+    for (let threadData of threadsData) {
+      t[threadData.no] = new ThreadPreview(boardName, threadData)
+    }
+    return t
+  }
+}
+
+class Thread {
+  constructor(boardName, threadNumber) {
+    this._data = this._sendAPIRequest(boardName, threadNumber)
+      .then((data) => this._parseAPIResponse(data))
+  }
+
+  async _sendAPIRequest(boardName, threadNumber) {
+    const response = await axios.get(`http://a.4cdn.org/${boardName}/thread/${threadNumber}.json`)
     .then(data => data.data)
     return response
-  } catch (error) {
-    console.error(error)
   }
-}
 
-const _getThreads = async (board) => {
-  try {
-    const response = await axios.get(`http://a.4cdn.org/${board}/threads.json`)
-    .then(data => data.data)
-    return response
-  } catch (error) {
-    console.error(error)
+  _parseAPIResponse(APIResponse) {
+    const thread = this._parseThread(APIResponse)
   }
-}
 
-const _getThread = async (board, thread) => {
-  try {
-    const response = await axios.get(`http://a.4cdn.org/${board}/thread/${thread}.json`)
-    .then(data => data.data)
-    return response
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const _getThreadImages = async (board, thread, filter) => {
-  try {
-    const response = await _getThread(board, thread)
-    const images = {
-      posts: [],
-      urls: []
+  _parseThread(threadData) {
+    const thread = {
+      no: threadData.posts[0].no,
+      time: threadData.posts[0].now,
+      semanticURL: threadData.posts[0].semanticURL,
+      replies: threadData.posts[0].replies,
+      images: threadData.posts[0].images,
+      uniqueIPs: threadData.posts[0].unique_ips,
+      posts: this._parsePosts(threadData.posts)
     }
-    for (let post of response.posts) {
-      if (post.filename) {
-        if (filter) {
-          if (post.ext === `.${filter}`) {
-            images.urls.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
-            images.posts.push(post)
-          }
-        } else {
-          images.urls.push(`http://i.4cdn.org/${board}/${post.tim}${post.ext}`)
-          images.posts.push(post)
-        }
-      }
+  }
+
+  _parsePosts(postsData) {
+    const p = {}
+    for (let post of postsData) {
+      p[post.no] = new Post(post)
     }
-    return images
-  } catch (error) {
-    console.error(error)
+    return p
   }
 }
 
-const _getReplies = async (boardName, threadNo, postNo) => {
-  try {
-    const thread = await _getThread(boardName, threadNo)
-    const replies = []
-    for (let reply of thread.posts) {
-      if (reply.resto === postNo) {
-        replies.push(reply)
-      }
+class ThreadPreview {
+  constructor(boardName, threadData) {
+    this.no = threadData.no
+    this.now = threadData.now
+    this.name = threadData.name
+    this.comment = threadData.com
+    this.time = threadData.time
+    this.replyTo = threadData.resto
+    this.bumpLimit = threadData.bumplimit
+    this.imageLimit = threadData.imageLimit
+    this.semanticURL = threadData.semantic_url
+    this.replyCount = threadData.replies
+    this.imageCount = threadData.images
+    this.omitted = {
+      posts: threadData.omitted_posts,
+      images: threadData.omitted_images
     }
-    return replies
-  } catch (error) {
-    console.error(error)
+    this.lastReplies = threadData.last_replies
+    this.lastModified = threadData.last_modified
+    this.image = new Image({
+      filename: threadData.filename,
+      ext: threadData.ext,
+      width: threadData.width,
+      height: threadData.height,
+      tn_w: threadData.tn_w,
+      tn_h: threadData.tn_h,
+      tim: threadData.tim,
+      md5: threadData.md5,
+      fsize: threadData.fsize
+    })
+  }
+}
+
+class Post {
+  constructor(postData) {
+    this.no = postData.no
+    this.now = postData.now
+    this.name = postData.name
+    this.com = postData.com || undefined
+    this.time = postData.time
+    this.replyTo = postData.resto
+    this.bumpLimit = postData.bumplimit || undefined
+    this.imageLimit = postData.imageLimit || undefined
+    this.semanticURL = postData.semantic_url || undefined
+    this.replyCount = postData.replies || undefined
+    this.imageCount = postData.images || undefined
+    this.image = new Image({
+      fsize: postData.fsize,
+      md5: postData.md5,
+      tim: postData.tim,
+      filename: postData.filename,
+      ext: postData.ext,
+      w: postData.w,
+      h: postData.h,
+      tn_h: postData.tn_h,
+      tn_w: postData.tn_w
+    }) || undefined
+  }
+}
+
+class Image {
+  constructor(imageData) {
+    this.filename = imageData.filename
+    this.ext = imageData.ext
+    this.width = imageData.w
+    this.height = imageData.h
+    this.thumbnail = {
+      height: imageData.tn_h,
+      width: imageData.tn_w
+    }
+    this.tim = imageData.tim
+    this.md5 = imageData.md5
+    this.filesize = imageData.fsize
+  }
+}
+
+class ThreadCollection extends Array {
+  constructor(...threads) {
+    super(threads)
+  }
+}
+
+class PostCollection extends Array {
+  constructor(...posts) {
+    super(posts)
+  }
+}
+
+class ImageCollection extends Array {
+  constructor(...images) {
+    super(images)
   }
 }
 
